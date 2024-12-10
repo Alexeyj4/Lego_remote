@@ -1,6 +1,9 @@
 #include <ESP32Encoder.h>
 #include <Esp_now_j4.h>
- 
+#include <GyverOLED.h>
+
+//#define OLED_SDA_PIN 21
+//#define OLED_SCL_PIN 22
 #define ENC_H_A_PIN 27 //horizontal control encoder A pin
 #define ENC_H_B_PIN 26 //horizontal control encoder B pin
 #define ENC_V_A_PIN 25 //vertical control encoder A pin
@@ -25,12 +28,36 @@ int prev_v_angle=90;//servo
 int prev_l_speed=0;//motor
 int prev_r_speed=0;//motor
 
+int h_angle;
+int v_angle;
+int l_speed;
+int r_speed;
+
 ESP32Encoder h_enc;
 ESP32Encoder v_enc;
 Esp_now_j4 esp_now(MAC);
+GyverOLED<SSH1106_128x64> oled;
+
+void  display_info_update(){
+    oled.clear();   // очистить дисплей (или буфер) 
+    oled.home();            // курсор в 0,0
+    oled.println(h_angle);
+    oled.println(v_angle);
+    oled.println(l_speed);
+    oled.println(r_speed);
+    oled.update();
+    
+}
 
 void setup()
 {  
+  oled.init();
+  oled.setScale(2); 
+  oled.clear();   // очистить дисплей (или буфер) 
+  oled.home();            // курсор в 0,0
+  oled.println("press");
+  oled.println("any key");
+  oled.update();
   esp_now.begin();
   pinMode(ENC_H_A_PIN, INPUT_PULLUP);
   pinMode(ENC_H_B_PIN, INPUT_PULLUP);
@@ -70,8 +97,8 @@ void loop()
     v_enc.setCount(0);
   }
 
-  int h_angle=180-h_enc_angle;//инверсия угла энкодера (180-0)
-  int v_angle=180-v_enc_angle;//инверсия угла энкодера (180-0)
+  h_angle=180-h_enc_angle;//инверсия угла энкодера (180-0)
+  v_angle=180-v_enc_angle;//инверсия угла энкодера (180-0)
 
   //проверка, был ли изменён h-угол, и установка нового угла, если да:
   if(h_angle!=prev_h_angle){
@@ -81,6 +108,7 @@ void loop()
     prev_h_angle=h_angle;            
     delay(50);  
     digitalWrite(BUILTIN_LED_PIN,0); 
+    display_info_update();
   }
   
   //проверка, был ли изменён v-угол, и установка нового угла, если да:
@@ -91,12 +119,12 @@ void loop()
     prev_v_angle=v_angle;
     delay(50); 
     digitalWrite(BUILTIN_LED_PIN,0);
+    display_info_update();    
   }
 
   //считывание левого с джойстика  
   int adc_left_x_joystick=analogRead(POT_L_X_PIN);
-  int l_speed;  
-
+  
   if(POT_LEVEL_F_3<adc_left_x_joystick){ l_speed=MAX_MOTOR_SPEED; }    
   if((POT_LEVEL_F_2<adc_left_x_joystick)and(adc_left_x_joystick<POT_LEVEL_F_3)){ l_speed=int(MAX_MOTOR_SPEED/3*2); }
   if((POT_LEVEL_F_1<adc_left_x_joystick)and(adc_left_x_joystick<POT_LEVEL_F_2)){ l_speed=int(MAX_MOTOR_SPEED/3); }
@@ -112,12 +140,12 @@ void loop()
     prev_l_speed=l_speed; 
     delay(50);
     digitalWrite(BUILTIN_LED_PIN,0); 
+    display_info_update();
   }
 
   //считывание правого с джойстика
   int adc_right_x_joystick=analogRead(POT_R_X_PIN);
-  int r_speed;
-  
+    
   if(POT_LEVEL_F_3<adc_right_x_joystick){ r_speed=MAX_MOTOR_SPEED; }    
   if((POT_LEVEL_F_2<adc_right_x_joystick)and(adc_right_x_joystick<POT_LEVEL_F_3)){ r_speed=int(MAX_MOTOR_SPEED/3*2); }
   if((POT_LEVEL_F_1<adc_right_x_joystick)and(adc_right_x_joystick<POT_LEVEL_F_2)){ r_speed=int(MAX_MOTOR_SPEED/3); }
@@ -133,9 +161,9 @@ void loop()
     prev_r_speed=r_speed; 
     delay(50);
     digitalWrite(BUILTIN_LED_PIN,0); 
+    display_info_update();
   }
-  
-       
+
 
 }
  
