@@ -70,7 +70,7 @@ void setup()
   h_enc.setCount(90*4/enc2servo_coef);
   v_enc.attachFullQuad(ENC_V_A_PIN, ENC_V_B_PIN);
   v_enc.setCount(90*4/enc2servo_coef);
-  Serial.begin(115200);    
+  //Serial.begin(115200);    
 }
  
 void loop()

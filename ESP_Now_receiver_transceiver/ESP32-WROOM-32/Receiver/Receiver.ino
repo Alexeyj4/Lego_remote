@@ -17,7 +17,8 @@
 #define BUILTIN_LED_PIN 2
 
 const int stepsPerRevolution = 2048;  // change this to fit the number of steps per revolution
-uint8_t MAC[] = {0x78, 0x21, 0x84, 0xE1, 0x7E, 0xA0}; //для проверки отправителя
+uint8_t MAC[] = {0x78, 0x21, 0x84, 0xE1, 0x7E, 0xA0}; //для проверки отправителя //картонный пульт
+//uint8_t MAC[] = {0xA8, 0x42, 0xE3, 0x8F, 0xAE, 0xC4}; //Catapulta //debug
  
 Servo servo_h;
 Servo servo_v;
@@ -27,6 +28,7 @@ Esp_now_j4 esp_now(MAC);
  
 void setup()
 {  
+  //Serial.begin(115200);  //debug
   pinMode(BUILTIN_LED_PIN,OUTPUT);
   esp_now.begin();
   servo_h.attach(SERVO_H_PIN);
@@ -36,8 +38,7 @@ void setup()
   stepper1.setAcceleration(5000); // установка ускорения в шагах/сек/сек
   stepper2.setRunMode(FOLLOW_POS);// режим следования к целевй позиции  
   stepper2.setMaxSpeed(400);// установка макс. скорости в шагах/сек  //предположительно 400-максимум
-  stepper2.setAcceleration(5000); // установка ускорения в шагах/сек/сек
-  //Serial.begin(115200);  //debug
+  stepper2.setAcceleration(5000); // установка ускорения в шагах/сек/сек  
 }
  
 void loop()
