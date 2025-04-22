@@ -18,7 +18,6 @@
 
 const int stepsPerRevolution = 2048;  // change this to fit the number of steps per revolution
 uint8_t MAC[] = {0x78, 0x21, 0x84, 0xE1, 0x7E, 0xA0}; //для проверки отправителя //картонный пульт
-//uint8_t MAC[] = {0xA8, 0x42, 0xE3, 0x8F, 0xAE, 0xC4}; //Catapulta //debug
  
 Servo servo_h;
 Servo servo_v;
