@@ -1,0 +1,142 @@
+#include <ESP32Encoder.h>
+#include <Esp_now_j4.h>
+#include <GyverOLED.h>
+
+//#define OLED_SDA_PIN 21
+//#define OLED_SCL_PIN 22
+#define ENC_H_A_PIN 27 //horizontal control encoder A pin
+#define ENC_H_B_PIN 26 //horizontal control encoder B pin
+#define ENC_V_A_PIN 25 //vertical control encoder A pin
+#define ENC_V_B_PIN 33 //vertical control encoder B pin
+//При использовании WiFi для аналоговых входов используйте пины 32, 33, 34, 35, 36, 39. Остальные могут вызвать проблемы:
+#define POT_L_X_PIN 35 //left x pot pin //joystick
+#define POT_R_X_PIN 32 //right x pot pin //joystick
+#define BUILTIN_LED_PIN 2
+#define POT_LEVEL_F_3 3440 //forward
+#define POT_LEVEL_F_2 2824 //forward
+#define POT_LEVEL_F_1 2208 //forward
+#define POT_LEVEL_B_1 1629 //backward
+#define POT_LEVEL_B_2 1086 //backward
+#define POT_LEVEL_B_3 543 //backward
+#define MAX_MOTOR_SPEED 400 //максимальная скорость шагового двигателя
+#define SEND_TIMEOUT 15 //пауза между передачей одного из значений
+
+uint8_t MAC[] = {0x78, 0x21, 0x84, 0xE1, 0x35, 0xD0}; //Lego
+//uint8_t MAC[] = {0xA8, 0x42, 0xE3, 0x8F, 0xAE, 0xC4}; //Catapulta
+int enc2servo_coef=2;
+
+int h_angle;
+int v_angle;
+int l_speed;
+int r_speed;
+
+ESP32Encoder h_enc;
+ESP32Encoder v_enc;
+Esp_now_j4 esp_now(MAC);
+GyverOLED<SSH1106_128x64> oled;
+
+void  display_info_update(){
+    oled.clear();   // очистить дисплей (или буфер) 
+    oled.home();            // курсор в 0,0
+    oled.println(h_angle);
+    oled.println(v_angle);
+    oled.println(l_speed);
+    oled.println(r_speed);
+    oled.update();
+    
+}
+
+void setup()
+{  
+  oled.init();
+  oled.setScale(2); 
+  oled.clear();   // очистить дисплей (или буфер) 
+  oled.home();            // курсор в 0,0
+  oled.println("press");
+  oled.println("any key");
+  oled.update();
+  esp_now.begin();
+  pinMode(ENC_H_A_PIN, INPUT_PULLUP);
+  pinMode(ENC_H_B_PIN, INPUT_PULLUP);
+  pinMode(ENC_V_A_PIN, INPUT_PULLUP);
+  pinMode(ENC_V_B_PIN, INPUT_PULLUP);
+  pinMode(POT_L_X_PIN, INPUT);
+  pinMode(POT_R_X_PIN, INPUT);  
+  pinMode(BUILTIN_LED_PIN,OUTPUT);
+  h_enc.attachFullQuad(ENC_H_A_PIN, ENC_H_B_PIN);
+  h_enc.setCount(90*4/enc2servo_coef);
+  v_enc.attachFullQuad(ENC_V_A_PIN, ENC_V_B_PIN);
+  v_enc.setCount(90*4/enc2servo_coef);
+  //Serial.begin(115200);    
+}
+ 
+void loop()
+{   
+ 
+  int h_enc_angle=(int32_t)(floor(h_enc.getCount()/4)*enc2servo_coef); //(0-180)/enc2servo_coef
+  int v_enc_angle=(int32_t)(floor(v_enc.getCount()/4)*enc2servo_coef); //(0-180)/enc2servo_coef
+  
+  //выравнивание угла до диапазона 0-180:
+  if(h_enc_angle>(180)){
+    h_enc_angle=180;
+    h_enc.setCount(180*4/enc2servo_coef);
+  }
+  if(h_enc_angle<0){
+    h_enc_angle=0;
+    h_enc.setCount(0);
+  }
+  if(v_enc_angle>(180)){
+    v_enc_angle=180;
+    v_enc.setCount(180*4/enc2servo_coef);
+  }
+  if(v_enc_angle<0){
+    v_enc_angle=0;
+    v_enc.setCount(0);
+  }
+
+  h_angle=180-h_enc_angle;//инверсия угла энкодера (180-0)
+  v_angle=180-v_enc_angle;//инверсия угла энкодера (180-0)
+
+  digitalWrite(BUILTIN_LED_PIN,1);
+ 
+  esp_now.send("h="+String(h_angle));      
+  delay(SEND_TIMEOUT);      
+
+  esp_now.send("v="+String(v_angle));      
+  delay(SEND_TIMEOUT);  
+   
+  //считывание левого с джойстика  
+  int adc_left_x_joystick=analogRead(POT_L_X_PIN);
+  
+  if(POT_LEVEL_F_3<adc_left_x_joystick){ l_speed=MAX_MOTOR_SPEED; }    
+  if((POT_LEVEL_F_2<adc_left_x_joystick)and(adc_left_x_joystick<POT_LEVEL_F_3)){ l_speed=int(MAX_MOTOR_SPEED/3*2); }
+  if((POT_LEVEL_F_1<adc_left_x_joystick)and(adc_left_x_joystick<POT_LEVEL_F_2)){ l_speed=int(MAX_MOTOR_SPEED/3); }
+  if((POT_LEVEL_B_1<adc_left_x_joystick)and(adc_left_x_joystick<POT_LEVEL_F_1)){ l_speed=0; }
+  if((POT_LEVEL_B_2<adc_left_x_joystick)and(adc_left_x_joystick<POT_LEVEL_B_1)){ l_speed=int(-1*MAX_MOTOR_SPEED/3); }
+  if((POT_LEVEL_B_3<adc_left_x_joystick)and(adc_left_x_joystick<POT_LEVEL_B_2)){ l_speed=int(-1*MAX_MOTOR_SPEED/3*2); }
+  if(adc_left_x_joystick<POT_LEVEL_B_3){ l_speed=int(-1*MAX_MOTOR_SPEED); }  
+  
+  esp_now.send("l="+String(l_speed)); 
+  delay(SEND_TIMEOUT);    
+
+  //считывание правого с джойстика
+  int adc_right_x_joystick=analogRead(POT_R_X_PIN);
+    
+  if(POT_LEVEL_F_3<adc_right_x_joystick){ r_speed=MAX_MOTOR_SPEED; }    
+  if((POT_LEVEL_F_2<adc_right_x_joystick)and(adc_right_x_joystick<POT_LEVEL_F_3)){ r_speed=int(MAX_MOTOR_SPEED/3*2); }
+  if((POT_LEVEL_F_1<adc_right_x_joystick)and(adc_right_x_joystick<POT_LEVEL_F_2)){ r_speed=int(MAX_MOTOR_SPEED/3); }
+  if((POT_LEVEL_B_1<adc_right_x_joystick)and(adc_right_x_joystick<POT_LEVEL_F_1)){ r_speed=0; }
+  if((POT_LEVEL_B_2<adc_right_x_joystick)and(adc_right_x_joystick<POT_LEVEL_B_1)){ r_speed=int(-1*MAX_MOTOR_SPEED/3); }
+  if((POT_LEVEL_B_3<adc_right_x_joystick)and(adc_right_x_joystick<POT_LEVEL_B_2)){ r_speed=int(-1*MAX_MOTOR_SPEED/3*2); }
+  if(adc_right_x_joystick<POT_LEVEL_B_3){ r_speed=int(-1*MAX_MOTOR_SPEED); }  
+  
+  esp_now.send("r="+String(r_speed)); 
+  delay(SEND_TIMEOUT);  
+
+  digitalWrite(BUILTIN_LED_PIN,0); 
+  display_info_update();
+
+
+
+}
+ 
